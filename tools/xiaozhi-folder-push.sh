@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# xiaozhi-folder-push.sh · v1.0 · 2026-10-10
+# xiaozhi-folder-push.sh · v1.1 · 2026-10-10 (v1.1: *keys* names and archives never committed)
 # Housekeeping of ~/Documents/Microcontrolers/Xiao Zhi, then git + GitHub (YokohamaAIart/AI_chatbot_esp32).
 #
 #   bash xiaozhi-folder-push.sh plan      # read-only: inventory + what clean/push WOULD do
@@ -19,7 +19,8 @@ MAX_MB=20
 Q="$XZ/_quarantine"
 TRAILER=$'\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_016PkzimiZucuLEfzUTGNgT4'
 JUNK_RE='(~|\.bak|\.orig|\.rej|\.swp|\.swo|\.tmp|\.DS_Store|Thumbs\.db|desktop\.ini)$'
-SECRET_RE='(^|/)(\.config\.yaml|\.env(\..*)?|.*\.(pem|key|p12|pfx)|.*(token|secret|password|credential)[^/]*)$'
+SECRET_RE='(^|/)(\.config\.yaml|\.env(\..*)?|.*\.(pem|key|p12|pfx)|.*(token|secret|password|credential|[_-]keys?[_.-])[^/]*)$'
+ARCHIVE_RE='\.(tgz|tar\.gz|tar|zip|7z)$'   # archives can hide secrets (e.g. .config.yaml inside) -> never committed
 # never-commit globs, written to .gitignore
 IGNORE=('_quarantine/' 'build/' 'managed_components/' 'sdkconfig' 'sdkconfig.old' '.vscode/' '__pycache__/' '*~' '*.bak' '*.orig' '*.swp' '.DS_Store' 'Thumbs.db' '.config.yaml' '.env' '*.pem' '*.key')
 
@@ -77,6 +78,7 @@ analyse() {
   EXCL=()
   for f in "${FILES[@]}"; do
     [[ "$f" =~ $SECRET_RE ]] && EXCL+=("secret	$f")
+    [[ "$f" =~ $ARCHIVE_RE ]] && EXCL+=("archive	$f")
     [ "$(stat -c %s -- "$f")" -gt $((MAX_MB*1024*1024)) ] && EXCL+=("over-${MAX_MB}MB	$f")
   done
 
