@@ -1,0 +1,84 @@
+sop: SOP-001
+slug: xiaozhi-e32r28t-bringup
+title: xiaozhi voice assistant on E32R28T — bounded bring-up
+version: '1.0'
+date: 2026-10-02
+status: RELEASED
+scope: 'Flash, network and voice bring-up of the LCDWiki E32R28T with the Perlinpinpin LAN server. Executed by Claude
+  Code (VS Code) under operator gates. Refs: CLAUDE.md v1.1, handoff bundle.'
+hazards:
+- tag: ELEC
+  text: Header wiring on a powered board can short 3V3/5V. Unplug USB before touching wires; buzz pins first.
+tools:
+- Perlinpinpin (Xubuntu 26.04) + VS Code + Claude Code extension
+- USB-C cable, phone (Wi-Fi portal + LAN test), multimeter
+materials:
+- LCDWiki E32R28T board
+- INMP441 mic, MAX98357A amp, 4-8 ohm speaker, 1.25 mm pigtails
+phases:
+- name: GUARD
+  steps:
+  - do: Paste the bounded prompt into Claude Code
+    detail: Listed commands only. Stop at every gate. One retry max.
+  - gate: Claude Code restated the stop rule?
+    fail: Do not proceed. Re-paste prompt in a fresh Claude Code chat.
+- name: FLASH
+  steps:
+  - do: Run flash.sh on /dev/ttyUSB0
+    detail: Timebox 15 min. Prebuilt image, checksum-verified.
+  - gate: esptool ends with hash verified?
+    fail: Hold BOOT, tap EN, release, rerun once. Still failing - STOP, paste output.
+- name: DISPLAY
+  steps:
+  - do: Watch first boot on the LCD
+    detail: Timebox 5 min.
+  - gate: UI upright, colours correct?
+    fail: Note symptom and continue. Fix deferred to one later rebuild.
+- name: WIFI
+  steps:
+  - do: Join Xiaozhi-XXXX portal from phone
+    detail: 192.168.4.1, pick Yokohama AI 5G. Timebox 10 min.
+  - gate: Device leaves portal mode, online?
+    fail: Re-enter credentials once. Still failing - STOP.
+- name: SERVER
+  steps:
+  - do: Run server/setup-server.sh once
+    detail: Timebox 60 min (downloads). No git pull, no manual installs.
+  - gate: Exit 0, both patches reported?
+    fail: STOP. Paste last 30 lines. No improvised fixes.
+  - do: Run start.sh with WS002_IP set
+    detail: Picks LM Studio if up, else Z.AI GLM fallback.
+  - gate: OTA URL returns JSON from the phone?
+    fail: STOP. Report whether 8090 health or 8003 OTA failed.
+- name: LINK
+  steps:
+  - do: Set OTA URL in device portal Advanced
+    detail: http://<Perlinpinpin IP>:8003/xiaozhi/ota/ . Timebox 10 min.
+  - gate: Server log shows the device connected?
+    fail: Re-check URL text once. Still failing - STOP.
+- name: PARTS
+  steps:
+  - gate: INMP441, MAX98357A, speaker in hand?
+    fail: END at milestone A (flashed, online, linked). Order parts; resume here.
+  - do: Unplug USB, wire SPI header
+    detail: IO18 BCLK, IO23 WS, IO19 mic SD, IO27 amp DIN. Mic L/R to GND.
+    hazard: ELEC
+  - gate: Continuity matches CLAUDE.md wiring table?
+    fail: Rewire before any power. No power on doubt.
+    hazard: ELEC
+- name: VOICE
+  steps:
+  - do: Say Jarvis, then a French question
+    detail: Timebox 15 min.
+  - gate: Spoken French reply within ~5 s?
+    fail: STOP. Paste ASR, LLM, TTS timing lines. No tuning in this SOP.
+end_state: Saying "Jarvis" plus a French or English question on the E32R28T yields a spoken reply, served only by
+  Perlinpinpin on the LAN (Parakeet ASR, LM Studio or GLM fallback, Pocket TTS). No change outside the project folder,
+  ~/xiaozhi-esp32-server and ~/pocket-tts.
+changelog:
+- v: '1.0'
+  date: 2026-10-02
+  note: Initial. Gated bring-up; timeboxes; single-retry stop rule.
+brand:
+  brand: ESP32 WONDERS
+  tagline: Perlinpinpin lab — bounded procedures

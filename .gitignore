@@ -218,3 +218,17 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+_quarantine/
+managed_components/
+sdkconfig
+sdkconfig.old
+.vscode/
+*~
+*.bak
+*.orig
+*.swp
+.DS_Store
+Thumbs.db
+.config.yaml
+*.pem
+*.key
