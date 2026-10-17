@@ -1,0 +1,10 @@
+{"title":"CARCAM — POWER & PIR WIRING","subtitle":"Freenove ESP32-S3 WROOM CAM · AM312 PIR · MT3608 boost · TP4056 charger · 1S LiPo",
+ "version":"v0.7","date":"2026-10-17","source_note":"Pins: CarCam PROJECT_DOC v0.6 · MT3608 trimmed 5.00 V",
+ "board":{"name":"FREENOVE","sub":"ESP32-S3 WROOM CAM","note":"deep-sleep wake ext0 on GPIO 1",
+   "pins":[{"label":"5V","net":"5V"},{"label":"GND","net":"GND"},{"label":"3V3","net":"3V3"},{"label":"GPIO 1","net":"PIR_OUT"}]},
+ "modules":[
+  {"name":"AM312 PIR","sub":"mini PIR, 3.3 V","pins":[{"label":"VCC","net":"3V3"},{"label":"OUT","net":"PIR_OUT"},{"label":"GND","net":"GND"}]},
+  {"name":"MT3608","sub":"boost 5.00 V","pins":[{"label":"VIN+","net":"BAT_P"},{"label":"VIN−","net":"BAT_N"},{"label":"VOUT+","net":"5V"},{"label":"VOUT−","net":"GND"}]},
+  {"name":"TP4056 USB-C","sub":"1S charger · PH2.0 socket = B±","pins":[{"label":"B+","net":"BAT_P"},{"label":"B−","net":"BAT_N"}]}],
+ "nets":{"5V":{"color":"#D62828","bus":true,"legend":"5V"},"GND":{"color":"#111111","bus":true,"legend":"GND"},"3V3":{"color":"#F77F00","bus":true,"legend":"3V3"},
+  "PIR_OUT":{"color":"#2A9D8F","legend":"PIR OUT"},"BAT_P":{"color":"#B91C1C","legend":"Cell +"},"BAT_N":{"color":"#374151","legend":"Cell −"}}}
