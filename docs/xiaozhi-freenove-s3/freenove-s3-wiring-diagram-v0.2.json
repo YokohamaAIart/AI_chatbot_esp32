@@ -1,0 +1,217 @@
+{
+  "title": "XIAOZHI VOICE SATELLITE — WIRING DIAGRAM",
+  "subtitle": "Freenove ESP32-S3 WROOM CAM · INMP441 · MAX98357A · 4–8 Ω speaker · SH1106 1.3″ OLED (I²C)",
+  "version": "v0.2",
+  "date": "2026-10-17",
+  "source_note": "Pins: config.h @ ed5cd7b · OLED SCK→21 / SDA→47 as wired 2026-10-17",
+  "board": {
+    "name": "FREENOVE",
+    "sub": "ESP32-S3 WROOM CAM",
+    "note": "FNK0085 · 16 MB flash · 8 MB PSRAM",
+    "pins": [
+      {
+        "label": "5V",
+        "net": "5V"
+      },
+      {
+        "label": "3V3",
+        "net": "3V3"
+      },
+      {
+        "label": "GND",
+        "net": "GND"
+      },
+      {
+        "label": "GPIO 1",
+        "net": "MIC_WS"
+      },
+      {
+        "label": "GPIO 2",
+        "net": "MIC_SCK"
+      },
+      {
+        "label": "GPIO 42",
+        "net": "MIC_SD"
+      },
+      {
+        "label": "GPIO 40",
+        "net": "AMP_BCLK"
+      },
+      {
+        "label": "GPIO 41",
+        "net": "AMP_LRC"
+      },
+      {
+        "label": "GPIO 39",
+        "net": "AMP_DIN"
+      },
+      {
+        "label": "GPIO 47",
+        "net": "SDA"
+      },
+      {
+        "label": "GPIO 21",
+        "net": "SCL"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "INMP441",
+      "sub": "I²S MEMS microphone",
+      "pins": [
+        {
+          "label": "VDD",
+          "net": "3V3"
+        },
+        {
+          "label": "GND",
+          "net": "GND"
+        },
+        {
+          "label": "L/R",
+          "net": "GND"
+        },
+        {
+          "label": "WS",
+          "net": "MIC_WS"
+        },
+        {
+          "label": "SCK",
+          "net": "MIC_SCK"
+        },
+        {
+          "label": "SD",
+          "net": "MIC_SD"
+        }
+      ]
+    },
+    {
+      "name": "MAX98357A",
+      "sub": "I²S class-D amplifier",
+      "pins": [
+        {
+          "label": "VIN",
+          "net": "5V"
+        },
+        {
+          "label": "GND",
+          "net": "GND"
+        },
+        {
+          "label": "LRC",
+          "net": "AMP_LRC"
+        },
+        {
+          "label": "BCLK",
+          "net": "AMP_BCLK"
+        },
+        {
+          "label": "DIN",
+          "net": "AMP_DIN"
+        }
+      ],
+      "right_pins": [
+        {
+          "label": "OUT+",
+          "net": "SPK_P"
+        },
+        {
+          "label": "OUT−",
+          "net": "SPK_N"
+        },
+        {
+          "label": "GAIN",
+          "nc": true
+        },
+        {
+          "label": "SD",
+          "nc": true
+        }
+      ]
+    },
+    {
+      "name": "SH1106 OLED 1.3″",
+      "sub": "128×64 · I²C 0x3C",
+      "pins": [
+        {
+          "label": "VCC",
+          "net": "3V3"
+        },
+        {
+          "label": "GND",
+          "net": "GND"
+        },
+        {
+          "label": "SCK",
+          "net": "SCL"
+        },
+        {
+          "label": "SDA",
+          "net": "SDA"
+        }
+      ]
+    }
+  ],
+  "nets": {
+    "5V": {
+      "color": "#D62828",
+      "bus": true,
+      "legend": "5V"
+    },
+    "3V3": {
+      "color": "#F77F00",
+      "bus": true,
+      "legend": "3V3"
+    },
+    "GND": {
+      "color": "#111111",
+      "bus": true,
+      "legend": "GND"
+    },
+    "MIC_SCK": {
+      "color": "#2A9D8F",
+      "legend": "BCLK / SCK"
+    },
+    "AMP_BCLK": {
+      "color": "#2A9D8F"
+    },
+    "MIC_WS": {
+      "color": "#E9C46A",
+      "legend": "WS / LRC"
+    },
+    "AMP_LRC": {
+      "color": "#E9C46A"
+    },
+    "MIC_SD": {
+      "color": "#1D4ED8",
+      "legend": "Mic data SD"
+    },
+    "AMP_DIN": {
+      "color": "#7B2CBF",
+      "legend": "Amp data DIN"
+    },
+    "SDA": {
+      "color": "#0EA5E9",
+      "legend": "I²C SDA"
+    },
+    "SCL": {
+      "color": "#C026D3",
+      "legend": "I²C SCL"
+    },
+    "SPK_P": {
+      "color": "#B91C1C",
+      "legend": "Speaker +"
+    },
+    "SPK_N": {
+      "color": "#374151",
+      "legend": "Speaker −"
+    }
+  },
+  "speaker": {
+    "module": "MAX98357A",
+    "plus": "SPK_P",
+    "minus": "SPK_N",
+    "label": "4–8 Ω"
+  }
+}
