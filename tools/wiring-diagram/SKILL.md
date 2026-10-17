@@ -58,14 +58,14 @@ If the script prints `WARNING: board pins with no module pin`, a net name is mis
 ## 3. Review before delivery — look at the PNG
 
 Open the rendered PNG and check, in this order:
-1. Every wire lands on exactly one pin box at each end; no wire passes through a box or under a label.
-0. Module pin order on the drawing = the confirmed silkscreen order, pin for pin, including NC pins.
-2. Colours match the legend; a colour used twice means the same bus role.
-3. Supply polarity: VIN/VCC on the correct rail (3V3-only parts never on 5V), GND star complete, L/R or address-select pins tied where the firmware expects (e.g. INMP441 L/R→GND = left slot).
-4. Nothing reserved is reused: camera FPC pins, microSD-shared pins, native USB D±, strapping pins.
-5. The title block states version, date and pin provenance.
+1. Module pin order on the drawing = the confirmed silkscreen order, pin for pin, including NC pins.
+2. Every wire lands on exactly one pin box at each end; no wire passes through a box or under a label.
+3. Colours match the legend; a colour used twice means the same bus role.
+4. Supply polarity: VIN/VCC on the correct rail (3V3-only parts never on 5V), GND star complete, L/R or address-select pins tied where the firmware expects (e.g. INMP441 L/R→GND = left slot).
+5. Nothing reserved is reused: camera FPC pins, microSD-shared pins, native USB D±, strapping pins.
+6. The title block states version, date and pin provenance.
 
-Fix the spec and re-render until all five pass; then deliver the PDF (and the SVG for edits). In the reply: pins that are confirmed vs proposed, and any firmware precondition.
+Fix the spec and re-render until all six pass; then deliver the PDF (and the SVG for edits). In the reply: pins that are confirmed vs proposed, and any firmware precondition.
 
 ## 4. Amend
 
