@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-wiring_diagram.py · v1.0 · board-to-module wiring diagram from a JSON spec → SVG (+ PDF/PNG via Chromium).
+wiring_diagram.py · v1.1 · board-to-module wiring diagram from a JSON spec → SVG (+ PDF/PNG via Chromium).
 
     python3 wiring_diagram.py spec.json                # writes spec.svg, spec.pdf, spec.png next to the spec
     python3 wiring_diagram.py spec.json --svg-only     # no Chromium needed
     python3 wiring_diagram.py --example > spec.json    # starter spec
 
-Spec (JSON):
+Spec (JSON). Module pins are listed in SILKSCREEN ORDER (left→right as read on the board), NC pins included in place:
 {
   "title": "PROJECT — WIRING DIAGRAM", "subtitle": "parts list", "version": "v0.1 DRAFT", "date": "2026-10-17",
   "source_note": "Pins: config.h @ ed5cd7b",            # top-right small print: where the pins came from
@@ -44,9 +44,9 @@ EXAMPLE = {
      "pins": [{"label": "VDD", "net": "3V3"}, {"label": "GND", "net": "GND"}, {"label": "L/R", "net": "GND"},
               {"label": "WS", "net": "MIC_WS"}, {"label": "SCK", "net": "MIC_SCK"}, {"label": "SD", "net": "MIC_SD"}]},
     {"name": "MAX98357A", "sub": "I²S class-D amplifier",
-     "pins": [{"label": "VIN", "net": "5V"}, {"label": "GND", "net": "GND"}, {"label": "LRC", "net": "AMP_LRC"},
-              {"label": "BCLK", "net": "AMP_BCLK"}, {"label": "DIN", "net": "AMP_DIN"}],
-     "right_pins": [{"label": "OUT+", "net": "SPK_P"}, {"label": "OUT−", "net": "SPK_N"}, {"label": "GAIN", "nc": True}, {"label": "SD", "nc": True}]},
+     "pins": [{"label": "LRC", "net": "AMP_LRC"}, {"label": "BCLK", "net": "AMP_BCLK"}, {"label": "DIN", "net": "AMP_DIN"},
+              {"label": "GAIN", "nc": True}, {"label": "SD", "nc": True}, {"label": "GND", "net": "GND"}, {"label": "VIN", "net": "5V"}],
+     "right_pins": [{"label": "OUT+", "net": "SPK_P"}, {"label": "OUT−", "net": "SPK_N"}]},
     {"name": "SH1106 OLED 1.3″", "sub": "128×64 · I²C 0x3C",
      "pins": [{"label": "GND", "net": "GND"}, {"label": "VCC", "net": "3V3"}, {"label": "SCL", "net": "SCL"}, {"label": "SDA", "net": "SDA"}]}],
   "nets": {"5V": {"color": "#D62828", "bus": True, "legend": "5V"}, "3V3": {"color": "#F77F00", "bus": True, "legend": "3V3"},
@@ -74,6 +74,9 @@ class SVG:
         self.add(f'<path d="{d}" fill="none" stroke="{color}" stroke-width="{sw}" stroke-linejoin="round" stroke-linecap="round"/>')
     def dot(self, x, y, color, r=4): self.add(f'<circle cx="{x}" cy="{y}" r="{r}" fill="{color}"/>')
     def pin(self, x, y, label, side, color=INK, nc=False):
+        if nc and side == "l":
+            self.add(f'<line x1="{x-14}" y1="{y}" x2="{x}" y2="{y}" stroke="{GREY}" stroke-width="2" stroke-dasharray="3,3"/>')
+            self.text(x+8, y+4, f"{label}  NC", 10, "start", fill=GREY, mono=True); return x
         if nc:
             self.add(f'<line x1="{x}" y1="{y}" x2="{x+14}" y2="{y}" stroke="{GREY}" stroke-width="2" stroke-dasharray="3,3"/>')
             self.text(x-8, y+4, f"{label}  NC", 10, "end", fill=GREY, mono=True); return x
@@ -119,7 +122,7 @@ def render(spec):
     # title block
     s.text(40, 38, spec["title"], 20, weight="bold"); s.text(40, 56, spec.get("subtitle", ""), 12, fill="#4B5563")
     s.text(W-40, 38, f'{spec.get("version","")} · {spec.get("date","")}', 12, "end", fill="#4B5563")
-    s.text(W-40, 56, spec.get("source_note", ""), 11, "end", fill=GREY)
+    s.text(W-40, 56, spec.get("source_note", "")[:70], 10, "end", fill=GREY)
     s.add(f'<line x1="40" y1="68" x2="{W-40}" y2="68" stroke="{GREY}" stroke-width="1"/>')
 
     board, mods = spec["board"], spec["modules"]
@@ -152,6 +155,7 @@ def render(spec):
         s.text(MX+MW/2, y+24, m["name"], 14, "middle", "bold", MOD); s.text(MX+MW/2, y+41, m.get("sub", ""), 10, "middle", fill="#6B7280")
         for i, p in enumerate(m["pins"]):
             yy = y + 62 + i*mp
+            if p.get("nc"): s.pin(MX, yy, p["label"], "l", nc=True); continue
             MP[(m["name"], p["label"])] = (s.pin(MX, yy, p["label"], "l", col(p.get("net", ""))), yy, p.get("net"))
         for i, p in enumerate(m.get("right_pins", [])):
             yy = y + 62 + i*22

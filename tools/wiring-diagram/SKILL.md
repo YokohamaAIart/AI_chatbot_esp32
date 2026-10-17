@@ -14,7 +14,7 @@ The script and references live in `github.com/YokohamaAIart/AI_chatbot_esp32/too
 ```bash
 B=https://raw.githubusercontent.com/YokohamaAIart/AI_chatbot_esp32/main/tools/wiring-diagram
 mkdir -p wiring-diagram/references && cd wiring-diagram
-curl -fsSL $B/wiring_diagram.py -o wiring_diagram.py && echo "5f099fd6eb3e1ad3fcd9c17ab95e65e2c248528900d85a0b12e118759bcf0d2e  wiring_diagram.py" | sha256sum -c -
+curl -fsSL $B/wiring_diagram.py -o wiring_diagram.py && echo "0c59e147267bbb1625e5c13389c72b1b46d90b546daecc83763125142f8f8db2  wiring_diagram.py" | sha256sum -c -
 for f in conventions modules debug-checklist; do curl -fsSL $B/references/$f.md -o references/$f.md; done
 python3 -c "import playwright" 2>/dev/null || pip install playwright && playwright install chromium   # only for PDF/PNG; SVG works without
 ```
@@ -27,6 +27,8 @@ Pin numbers come from, in this order of authority:
 2. **The vendor's board pinout** (schematic, GitHub repo, product page) for power pins, strapping pins, reserved buses (camera FPC, microSD, PSRAM, native USB).
 3. **The module's datasheet / listing** for its pin names and supply range (e.g. 3V3 vs 5V, I²C address, GAIN/SD defaults).
 4. **The operator's as-built notes** (handoff docs, previous diagram) for what is already soldered — these win over "should be" when they conflict, and the conflict is reported.
+
+**Module pin order is the silkscreen order, nothing else.** Before drawing, get the module's pin labels from the operator as read on the physical board, left→right with the labels upright (a photo or a typed list), and echo them back in one line for confirmation — `MAX98357A: LRC · BCLK · DIN · GAIN · SD · GND · VIN`. Draw them in exactly that order, NC pins in their place (dashed), supplies wherever the board puts them. Never regroup pins by function: a diagram that lists VIN first when the board has it last is the kind that gets DIN and VIN swapped at the bench. Call out look-alike labels explicitly when echoing (DIN/VIN, SCK/SCL/SDA, VCC/VIN, GND/GAIN) — the supply pin's colour (red/orange) next to a data pin's colour makes a swap visible on the drawing. Then order the board's pins to follow the module order so wires run straight; the diagram is read against the physical module, not against a datasheet table.
 
 Mark each pin's origin in the title block's `source_note` (e.g. `Pins: config.h @ ed5cd7b · OLED I²C pins proposed`). Anything you had to choose yourself (a free GPIO for a new module) is labelled **proposed** in the reply, never silently presented as fact. Check proposed pins against: strapping pins (ESP32-S3: 0, 3, 45, 46), buses the firmware already owns, input-only pins, pins the display driver assumes.
 
@@ -44,10 +46,10 @@ python3 wiring_diagram.py spec.json --svg-only    # no Chromium available
 ```
 
 Spec rules (the script enforces most of them and warns on the rest):
-- **Board**: one pin per net, listed top→bottom in the order that keeps wires short: supplies first, then modules in the same order as the module column.
+- **Board**: one pin per net, listed top→bottom to follow the modules' silkscreen order (supplies first, then each module's signals in the order they appear on that module) so wires run straight and the eye can pair pin to pin.
 - **Nets**: `bus: true` for 5V / 3V3 / GND — one board pin, a vertical rail, taps to every module. Draw supplies as a **star from the board's actual pins** (single GND pin on many boards) — a module's ground must never return through another module.
 - **Signals**: one colour per function family, consistent across modules: BCLK/SCK and WS/LRC share colours between mic and amp because they are the same bus role; data lines get their own colours. Reuse the palette in `references/conventions.md` so diagrams across a project read alike.
-- **Module pins** on the left face the board; `right_pins` are external (speaker terminals, cell, antenna) or `nc: true` (GAIN, SD, EN left floating — shown dashed, so the reader knows it is deliberate).
+- **Module pins** on the left face the board, in silkscreen order, `nc: true` entries kept in place (GAIN, SD, EN left floating — shown dashed, so the reader knows it is deliberate); `right_pins` are what leaves the diagram (speaker terminals, cell, antenna).
 - **Module ↔ module nets** (charger → boost → board): both ends on left-side pins; the script routes them on a lane beside the module column.
 - No comments on the drawing. Title block + legend only. Constraints and caveats go in the reply and the handoff doc.
 
@@ -57,6 +59,7 @@ If the script prints `WARNING: board pins with no module pin`, a net name is mis
 
 Open the rendered PNG and check, in this order:
 1. Every wire lands on exactly one pin box at each end; no wire passes through a box or under a label.
+0. Module pin order on the drawing = the confirmed silkscreen order, pin for pin, including NC pins.
 2. Colours match the legend; a colour used twice means the same bus role.
 3. Supply polarity: VIN/VCC on the correct rail (3V3-only parts never on 5V), GND star complete, L/R or address-select pins tied where the firmware expects (e.g. INMP441 L/R→GND = left slot).
 4. Nothing reserved is reused: camera FPC pins, microSD-shared pins, native USB D±, strapping pins.

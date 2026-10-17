@@ -34,12 +34,12 @@
         "net": "MIC_SD"
       },
       {
-        "label": "GPIO 40",
-        "net": "AMP_BCLK"
-      },
-      {
         "label": "GPIO 41",
         "net": "AMP_LRC"
+      },
+      {
+        "label": "GPIO 40",
+        "net": "AMP_BCLK"
       },
       {
         "label": "GPIO 39",
@@ -91,14 +91,6 @@
       "sub": "I²S class-D amplifier",
       "pins": [
         {
-          "label": "VIN",
-          "net": "5V"
-        },
-        {
-          "label": "GND",
-          "net": "GND"
-        },
-        {
           "label": "LRC",
           "net": "AMP_LRC"
         },
@@ -109,6 +101,22 @@
         {
           "label": "DIN",
           "net": "AMP_DIN"
+        },
+        {
+          "label": "GAIN",
+          "nc": true
+        },
+        {
+          "label": "SD",
+          "nc": true
+        },
+        {
+          "label": "GND",
+          "net": "GND"
+        },
+        {
+          "label": "VIN",
+          "net": "5V"
         }
       ],
       "right_pins": [
@@ -119,14 +127,6 @@
         {
           "label": "OUT−",
           "net": "SPK_N"
-        },
-        {
-          "label": "GAIN",
-          "nc": true
-        },
-        {
-          "label": "SD",
-          "nc": true
         }
       ]
     },
