@@ -9,6 +9,8 @@ A wiring diagram is the contract between the firmware and the bench. It is drawn
 
 **Acceptance criterion: zero discrepancy with the field hardware.** Every pin on the drawing matches the physical silkscreen of that exact board and module — same labels, spelled as printed (`SCK` if the board says SCK, not `SCL`), same left→right order, same count, NC pins included — and every GPIO number matches the firmware define. One mismatch is a defect: the diagram is wrong, not the board; redraw. A diagram that cannot yet be matched 100 % (layout source missing) is not delivered as a diagram; it is delivered as an `[INSUFFICIENT]` with what is needed to close it.
 
+**Final proof is the hardware, not the sources.** Fetched pinouts, datasheets and photos get the drawing to DRAFT; only the operator's pin-by-pin check against the physical boards while hard-wiring proves it (section 6). Nothing else upgrades a DRAFT.
+
 ## 0. Get the renderer
 
 The script and references live in `github.com/YokohamaAIart/AI_chatbot_esp32/tools/wiring-diagram/`. When this skill is installed as a bare SKILL.md, fetch them first (public repo, no auth):
@@ -80,6 +82,17 @@ A wiring change is a new version of the spec (`v0.2`), not an edit of the PDF. K
 ## 5. Debug against the diagram
 
 When the bench disagrees with the firmware, the diagram is the checklist — `references/debug-checklist.md` has the order. The principle: one read per step (continuity, voltage, boot log line), compare with the diagram, stop at the first mismatch. Typical findings from real sessions: a reversed sensor fed from the wrong rail, a module's GND returned through another module, a strapping pin pulled up by a module's CS pull-up, a display's BL pin wired to 3V3 when the firmware drives it as PWM, a microSD inserted on pins shared with the amp. Log the correction in the handoff doc and bump the diagram.
+
+## 6. Prove it on the hardware — the only path from DRAFT to VERIFIED
+
+Sources can be wrong, mirrored, or for another revision; the board in hand cannot. Every diagram ships as `vX.Y DRAFT` and stays DRAFT until the operator has walked it pin by pin against the physical silkscreen while wiring:
+
+1. Deliver the DRAFT with the exact list to tick: one line per module, pins in drawn order, with what is uncertain named (`INMP441: SCK · WS · L/R / SD · VDD · GND — row orientation vs mic port unverified`). The operator checks each pin label and position on the real board as he wires it, in that order.
+2. The operator reports per module: `matches` or the actual order as printed. One differing pin = that module's block is wrong → fix the spec, bump the version, re-render, re-check that module only.
+3. When every module reports `matches`, and the GPIO ends have been continuity-checked per `references/debug-checklist.md` step 1, bump to `vX.Y VERIFIED <date>`, write `verified on hardware <date>` in `source_note`, and record the verified silkscreen orders in `references/modules.md` so the next diagram starts from a proven layout.
+4. A VERIFIED diagram goes back to DRAFT on any change — module swap, revision change, re-wiring. Re-verify only the changed block.
+
+Never report a diagram as accurate on the strength of sources alone. Confirmed = read on this bench; everything before that is inference and is labelled so.
 
 ## References
 
