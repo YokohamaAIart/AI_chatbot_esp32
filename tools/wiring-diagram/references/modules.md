@@ -6,7 +6,7 @@ Listings lie; datasheets and the firmware's expectations win. Verify supply rang
 
 | Module | Pins | Supply | Gotchas |
 |---|---|---|---|
-| **INMP441** I²S mic | VDD, GND, SD (data out), WS, SCK, L/R | 3.3 V only | L/R→GND = left slot (what most firmware expects), L/R→VDD = right. Shared ground with a 5 V amp is fine; its VDD on 5 V kills it. Acoustic port must face open air. |
+| **INMP441** I²S mic (round breakout) | pad side, 2×3: row `L/R · WS · SCK` (labels upright) / row `GND · VDD · SD` (labels printed rotated 180°); columns pair L/R–GND, WS–VDD, SCK–SD — operator photo 2026-10-18 | 3.3 V only | L/R→GND = left slot (what most firmware expects), L/R→VDD = right. Shared ground with a 5 V amp is fine; its VDD on 5 V kills it. Acoustic port must face open air. |
 | **MAX98357A** I²S amp | silkscreen L→R: **LRC · BCLK · DIN · GAIN · SD · GND · VIN**; OUT+/OUT− terminal block | 2.7–5.5 V, 5 V for volume | DIN and VIN sit at opposite ends and read alike — confirm on the board. GAIN floating = 9 dB; SD floating = (L+R)/2 mono; SD→GND shuts the amp down. Speaker 4–8 Ω on the terminal block; no ground reference on OUT−. |
 | **SH1106 / SSD1306 128×64 I²C** | silkscreen L→R varies by vendor: **VCC · GND · SCK · SDA** on the 1.3″ Binhe module, GND · VCC · SCL · SDA on others — read the board | 3.3–5 V | Address 0x3C (sometimes 0x3D). Pull-ups usually on the module. SH1106 has a 132-px RAM offset: SSD1306 drivers show a shifted image. |
 | **GC9A01 1.28″ round SPI** | VCC, GND, SCL(CLK), SDA(MOSI), DC, CS, RST, BL | 3.3 V | BL is a PWM input on most firmware — do not tie to 3V3. CS on a strapping pin needs an eFuse/strap check. Keep SPI leads ≤ 15 cm at 40 MHz. |
