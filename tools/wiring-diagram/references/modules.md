@@ -1,6 +1,6 @@
 # Module pin facts and gotchas
 
-Pin lists below are in silkscreen order where known (left→right, labels upright). Where a vendor differs, the physical board wins — ask for it.
+Pin lists below are in silkscreen order only where a layout source was seen (left→right, labels upright); the others are pin *names*, not positions. Modules ship in several revisions — identify the revision, then get a layout source (photo, vendor pinout, schematic) before placing pins. Never place from this table alone.
 
 Listings lie; datasheets and the firmware's expectations win. Verify supply range and any select pin before drawing.
 
