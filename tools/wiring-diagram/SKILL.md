@@ -7,6 +7,8 @@ description: Produce, amend, review and debug precise board-to-module wiring dia
 
 A wiring diagram is the contract between the firmware and the bench. It is drawn **before** wiring and kept current afterwards; every bench fault is first checked against it. Produce it from facts, not recall: a GPIO number remembered wrongly costs an evening on the bench, and a pretty diagram with a wrong pin is worse than none.
 
+**Acceptance criterion: zero discrepancy with the field hardware.** Every pin on the drawing matches the physical silkscreen of that exact board and module — same labels, spelled as printed (`SCK` if the board says SCK, not `SCL`), same left→right order, same count, NC pins included — and every GPIO number matches the firmware define. One mismatch is a defect: the diagram is wrong, not the board; redraw. A diagram that cannot yet be matched 100 % (layout source missing) is not delivered as a diagram; it is delivered as an `[INSUFFICIENT]` with what is needed to close it.
+
 ## 0. Get the renderer
 
 The script and references live in `github.com/YokohamaAIart/AI_chatbot_esp32/tools/wiring-diagram/`. When this skill is installed as a bare SKILL.md, fetch them first (public repo, no auth):
@@ -62,7 +64,7 @@ If the script prints `WARNING: board pins with no module pin`, a net name is mis
 ## 3. Review before delivery — look at the PNG
 
 Open the rendered PNG and check, in this order:
-1. Module pin order on the drawing = the confirmed silkscreen order, pin for pin, including NC pins.
+1. Module pins on the drawing = the confirmed silkscreen, pin for pin: same labels as printed, same order, same count, NC pins included. Any difference fails the whole diagram.
 2. Every wire lands on exactly one pin box at each end; no wire passes through a box or under a label.
 3. Colours match the legend; a colour used twice means the same bus role.
 4. Supply polarity: VIN/VCC on the correct rail (3V3-only parts never on 5V), GND star complete, L/R or address-select pins tied where the firmware expects (e.g. INMP441 L/R→GND = left slot).
