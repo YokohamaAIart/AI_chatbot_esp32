@@ -1,0 +1,220 @@
+diff --git a/main/display/oled_display.cc b/main/display/oled_display.cc
+--- a/main/display/oled_display.cc
++++ b/main/display/oled_display.cc
+@@ -10,6 +10,8 @@
+ #include <esp_err.h>
+ #include <esp_log.h>
+ #include <esp_lvgl_port.h>
++#include <freertos/FreeRTOS.h>
++#include <freertos/task.h>
+ #include <material_symbols.h>
+ #include <noto_emoji.h>
+ 
+@@ -83,6 +85,22 @@
+         return;
+     }
+ 
++    // Flush-wait guard. esp_lcd's I2C panel IO only raises on_color_trans_done after a
++    // successful transfer; on a NACK it returns early, LVGL never gets flush_ready and
++    // spins forever in wait_for_flushing (task watchdog on taskLVGL, display lock held,
++    // state machine frozen). A healthy I2C flush completes synchronously, so this
++    // callback only ever runs on the failure path: yield, and after ~100 ms declare the
++    // flush done. The lost page is repainted by the next refresh of that area.
++    lv_display_set_flush_wait_cb(display_, [](lv_display_t* disp) {
++        static int stalled_ticks = 0;
++        vTaskDelay(pdMS_TO_TICKS(10));
++        if (++stalled_ticks >= 10) {
++            stalled_ticks = 0;
++            ESP_LOGW(TAG, "I2C flush lost, forcing flush_ready");
++            lv_display_flush_ready(disp);
++        }
++    });
++
+     // Note: SetupUI() should be called by Application::Initialize(), not in constructor
+     // to ensure lvgl objects are created after the display is fully initialized.
+ }
+diff --git a/main/Kconfig.projbuild b/main/Kconfig.projbuild
+index 1d1ba04..bedeee8 100644
+--- a/main/Kconfig.projbuild
++++ b/main/Kconfig.projbuild
+@@ -726,7 +726,7 @@ choice WK_ESP32S3_DEV_DISPLAY_TYPE
+ endchoice
+ 
+ choice DISPLAY_OLED_TYPE
+-    depends on BOARD_TYPE_BREAD_COMPACT_WIFI || BOARD_TYPE_BREAD_COMPACT_ML307 || BOARD_TYPE_BREAD_COMPACT_NT26 || BOARD_TYPE_BREAD_COMPACT_ESP32 || BOARD_TYPE_HU_087 || (BOARD_TYPE_WK_ESP32S3_DEV && WK_ESP32S3_DEV_DISPLAY_OLED)
++    depends on BOARD_TYPE_BREAD_COMPACT_WIFI || BOARD_TYPE_BREAD_COMPACT_WIFI_CAM || BOARD_TYPE_BREAD_COMPACT_ML307 || BOARD_TYPE_BREAD_COMPACT_NT26 || BOARD_TYPE_BREAD_COMPACT_ESP32 || BOARD_TYPE_HU_087 || (BOARD_TYPE_WK_ESP32S3_DEV && WK_ESP32S3_DEV_DISPLAY_OLED)
+     prompt "OLED Type"
+     default OLED_SSD1306_128X32
+     help
+@@ -740,6 +740,13 @@ choice DISPLAY_OLED_TYPE
+ endchoice
+ 
+ 
++config S3CAM_DISPLAY_OLED_I2C
++    bool "Bread Compact WiFi CAM: use an I2C OLED (SSD1306/SH1106) instead of the SPI LCD"
++    depends on BOARD_TYPE_BREAD_COMPACT_WIFI_CAM
++    default n
++    help
++        OLED on I2C port 0: SDA GPIO47, SCL GPIO21 (the SPI LCD pins DC/RST reused). The camera keeps I2C port 1 for SCCB.
++
+ choice DISPLAY_LCD_TYPE
+     depends on BOARD_TYPE_BREAD_COMPACT_WIFI_LCD || BOARD_TYPE_BREAD_COMPACT_ESP32_LCD || BOARD_TYPE_WDMOMO_CGC || BOARD_TYPE_BREAD_COMPACT_WIFI_CAM || (BOARD_TYPE_WK_ESP32S3_DEV && WK_ESP32S3_DEV_DISPLAY_LCD)
+     prompt "LCD Type"
+diff --git a/main/boards/bread-compact-wifi-s3cam/compact_wifi_board_s3cam.cc b/main/boards/bread-compact-wifi-s3cam/compact_wifi_board_s3cam.cc
+index a06d0e5..8bce676 100644
+--- a/main/boards/bread-compact-wifi-s3cam/compact_wifi_board_s3cam.cc
++++ b/main/boards/bread-compact-wifi-s3cam/compact_wifi_board_s3cam.cc
+@@ -1,6 +1,7 @@
+ #include "wifi_board.h"
+ #include "codecs/no_audio_codec.h"
+ #include "display/lcd_display.h"
++#include "display/oled_display.h"
+ #include "system_reset.h"
+ #include "application.h"
+ #include "button.h"
+@@ -16,6 +17,10 @@
+ #include <esp_lcd_panel_io.h>
+ #include <esp_lcd_panel_ops.h>
+ #include <driver/spi_common.h>
++#include <esp_lcd_panel_ssd1306.h>
++#ifdef SH1106
++#include <esp_lcd_panel_sh1106.h>
++#endif
+ 
+ #if defined(LCD_TYPE_ILI9341_SERIAL)
+ #include "esp_lcd_ili9341.h"
+@@ -64,9 +69,68 @@ class CompactWifiBoardS3Cam : public WifiBoard {
+ private:
+  
+     Button boot_button_;
+-    LcdDisplay* display_;
++    Display* display_ = nullptr;
++#ifdef DISPLAY_OLED_I2C
++    i2c_master_bus_handle_t display_i2c_bus_ = nullptr;
++    esp_lcd_panel_io_handle_t oled_panel_io_ = nullptr;
++    esp_lcd_panel_handle_t oled_panel_ = nullptr;
++#endif
+     Esp32Camera* camera_;
+ 
++
++#ifdef DISPLAY_OLED_I2C
++    void InitializeDisplayI2c() {
++        i2c_master_bus_config_t bus_config = {
++            .i2c_port = DISPLAY_I2C_PORT,
++            .sda_io_num = DISPLAY_SDA_PIN,
++            .scl_io_num = DISPLAY_SCL_PIN,
++            .clk_source = I2C_CLK_SRC_DEFAULT,
++            .glitch_ignore_cnt = 7,
++            .intr_priority = 0,
++            .trans_queue_depth = 0,
++            .flags = { .enable_internal_pullup = 1 },
++        };
++        ESP_ERROR_CHECK(i2c_new_master_bus(&bus_config, &display_i2c_bus_));
++    }
++
++    void InitializeOledDisplay() {
++        esp_lcd_panel_io_i2c_config_t io_config = {
++            .dev_addr = 0x3C,
++            .scl_speed_hz = 100 * 1000,
++            .control_phase_bytes = 1,
++            .dc_bit_offset = 6,
++            .lcd_cmd_bits = 8,
++            .lcd_param_bits = 8,
++            .on_color_trans_done = nullptr,
++            .user_ctx = nullptr,
++            .flags = { .dc_low_on_data = 0, .disable_control_phase = 0 },
++        };
++        ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c(display_i2c_bus_, &io_config, &oled_panel_io_));
++
++        esp_lcd_panel_dev_config_t panel_config = {};
++        panel_config.reset_gpio_num = GPIO_NUM_NC;
++        panel_config.bits_per_pixel = 1;
++        esp_lcd_panel_ssd1306_config_t ssd1306_config = { .height = static_cast<uint8_t>(DISPLAY_HEIGHT) };
++        panel_config.vendor_config = &ssd1306_config;
++#ifdef SH1106
++        ESP_ERROR_CHECK(esp_lcd_new_panel_sh1106(oled_panel_io_, &panel_config, &oled_panel_));
++#else
++        ESP_ERROR_CHECK(esp_lcd_new_panel_ssd1306(oled_panel_io_, &panel_config, &oled_panel_));
++#endif
++        ESP_ERROR_CHECK(esp_lcd_panel_reset(oled_panel_));
++        if (esp_lcd_panel_init(oled_panel_) != ESP_OK) {
++            ESP_LOGE(TAG, "OLED init failed (I2C port %d, SDA %d, SCL %d)", DISPLAY_I2C_PORT, DISPLAY_SDA_PIN, DISPLAY_SCL_PIN);
++            display_ = new NoDisplay();
++            return;
++        }
++        ESP_ERROR_CHECK(esp_lcd_panel_invert_color(oled_panel_, false));
++        ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(oled_panel_, true));
++        ESP_LOGI(TAG, "OLED %dx%d on I2C port %d", DISPLAY_WIDTH, DISPLAY_HEIGHT, DISPLAY_I2C_PORT);
++        display_ = new OledDisplay(oled_panel_io_, oled_panel_, DISPLAY_WIDTH, DISPLAY_HEIGHT, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y);
++    }
++#endif
++
++#ifndef DISPLAY_OLED_I2C
+     void InitializeSpi() {
+         spi_bus_config_t buscfg = {};
+         buscfg.mosi_io_num = DISPLAY_MOSI_PIN;
+@@ -124,6 +188,8 @@ private:
+                                     DISPLAY_WIDTH, DISPLAY_HEIGHT, DISPLAY_OFFSET_X, DISPLAY_OFFSET_Y, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y, DISPLAY_SWAP_XY);
+     }
+ 
++#endif // !DISPLAY_OLED_I2C
++
+     void InitializeCamera() {
+         camera_config_t config = {};
+         config.pin_d0 = CAMERA_PIN_D0;
+@@ -167,8 +233,13 @@ private:
+ public:
+     CompactWifiBoardS3Cam() :
+         boot_button_(BOOT_BUTTON_GPIO) {
++#ifdef DISPLAY_OLED_I2C
++        InitializeDisplayI2c();
++        InitializeOledDisplay();
++#else
+         InitializeSpi();
+         InitializeLcdDisplay();
++#endif
+         InitializeButtons();
+         InitializeCamera();
+         if (DISPLAY_BACKLIGHT_PIN != GPIO_NUM_NC) {
+diff --git a/main/boards/bread-compact-wifi-s3cam/config.h b/main/boards/bread-compact-wifi-s3cam/config.h
+index 857d8c0..464c768 100644
+--- a/main/boards/bread-compact-wifi-s3cam/config.h
++++ b/main/boards/bread-compact-wifi-s3cam/config.h
+@@ -54,6 +54,28 @@
+ #define XCLK_FREQ_HZ 20000000
+ 
+ 
++#ifdef CONFIG_S3CAM_DISPLAY_OLED_I2C
++// I2C OLED instead of the SPI LCD. Port 0 (port 1 = camera SCCB). Pins = former DC/RST.
++#define DISPLAY_OLED_I2C
++#define DISPLAY_I2C_PORT  I2C_NUM_0
++#define DISPLAY_SDA_PIN   GPIO_NUM_47
++#define DISPLAY_SCL_PIN   GPIO_NUM_21
++#define DISPLAY_WIDTH     128
++#if CONFIG_OLED_SSD1306_128X32
++#define DISPLAY_HEIGHT    32
++#elif CONFIG_OLED_SSD1306_128X64
++#define DISPLAY_HEIGHT    64
++#elif CONFIG_OLED_SH1106_128X64
++#define DISPLAY_HEIGHT    64
++#define SH1106
++#else
++#error "OLED display type is not selected"
++#endif
++#define DISPLAY_MIRROR_X  false
++#define DISPLAY_MIRROR_Y  false
++#define DISPLAY_BACKLIGHT_PIN GPIO_NUM_NC
++#define DISPLAY_BACKLIGHT_OUTPUT_INVERT false
++#else
+ #define DISPLAY_BACKLIGHT_PIN GPIO_NUM_38
+ #define DISPLAY_MOSI_PIN      GPIO_NUM_20
+ #define DISPLAY_CLK_PIN       GPIO_NUM_19
+@@ -303,6 +325,8 @@
+ 
+ 
+ // A MCP Test: Control a lamp
++#endif // CONFIG_S3CAM_DISPLAY_OLED_I2C
++
+ #define LAMP_GPIO GPIO_NUM_14
+ 
+ #endif // _BOARD_CONFIG_H_
